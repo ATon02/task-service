@@ -5,6 +5,8 @@ import com.example.taskservice.dtos.response.DTOTaskEntityResponse;
 import com.example.taskservice.exception.InvalidTaskException;
 import com.example.taskservice.exception.TaskEntityNotCreatedException;
 import com.example.taskservice.exception.TaskEntityNotFoundException;
+import com.example.taskservice.exception.TaskEntityNotUpdatedException;
+import com.example.taskservice.intercom.UserIntercom;
 import com.example.taskservice.repositories.TaskEntityRepository;
 import com.example.taskservice.services.TaskEntityService;
 import com.example.taskservice.utils.EntityMapper;
@@ -23,6 +25,8 @@ public class TaskEntityServiceImpl implements TaskEntityService {
     private EntityMapper entityMapper;
     @Autowired
     private TaskValidator taskValidator;
+    @Autowired
+    private UserIntercom userIntercom;
 
     @Override
     public Mono<DTOTaskEntityResponse> getById(long id) {
@@ -41,11 +45,14 @@ public class TaskEntityServiceImpl implements TaskEntityService {
     @Override
     public Mono<DTOTaskEntityResponse> save(DTOTaskEntityRequest taskEntityRequest) {
         return taskValidator.validateDto(taskEntityRequest)
-                .then(taskEntityRepository.save(entityMapper.dtoRequestToEntity(taskEntityRequest))
-                        .map(entityMapper::entityToDtoResponse)
-                        .switchIfEmpty(Mono.error(new TaskEntityNotCreatedException("Task not saved")))
-                )
-                .onErrorMap(InvalidTaskException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()));
+          .then(userIntercom.verifyUserExist(taskEntityRequest.getUserId())
+             .switchIfEmpty(Mono.error(new TaskEntityNotCreatedException("User with id: " + taskEntityRequest.getUserId() + " not exist")))
+          )
+          .flatMap(user -> taskEntityRepository.save(entityMapper.dtoRequestToEntity(taskEntityRequest)))
+          .map(entityMapper::entityToDtoResponse)
+          .switchIfEmpty(Mono.error(new TaskEntityNotCreatedException("Task not saved")))
+          .onErrorMap(InvalidTaskException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()))
+          .onErrorMap(RuntimeException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()));
     }
 
     @Override
@@ -60,7 +67,10 @@ public class TaskEntityServiceImpl implements TaskEntityService {
     @Override
     public Mono<DTOTaskEntityResponse> update(Long id, DTOTaskEntityRequest taskEntity) {
         return taskValidator.validateDto(taskEntity)
-                .then(taskEntityRepository.findById(id)
+           .then(userIntercom.verifyUserExist(taskEntity.getUserId())
+              .switchIfEmpty(Mono.error(new TaskEntityNotUpdatedException("User with id: " + taskEntity.getUserId() + " not exist")))
+           )
+                .flatMap(user->taskEntityRepository.findById(id)
                         .flatMap(existTaskEntity -> {
                             existTaskEntity.setTitle(taskEntity.getTitle());
                             existTaskEntity.setDescription(taskEntity.getDescription());
@@ -71,7 +81,8 @@ public class TaskEntityServiceImpl implements TaskEntityService {
                                     .switchIfEmpty(Mono.error(new TaskEntityNotCreatedException("Task not updated")));
                         }).switchIfEmpty(Mono.error(new TaskEntityNotFoundException("Task with ID " + id + " not found")))
                 )
-                .onErrorMap(InvalidTaskException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()));
+                .onErrorMap(InvalidTaskException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()))
+                .onErrorMap(RuntimeException.class, ex -> new TaskEntityNotCreatedException(ex.getMessage()));
     }
 
 
