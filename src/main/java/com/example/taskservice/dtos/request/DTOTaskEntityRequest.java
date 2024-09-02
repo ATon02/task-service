@@ -17,6 +17,13 @@ public class DTOTaskEntityRequest {
     public DTOTaskEntityRequest() {
     }
 
+    public DTOTaskEntityRequest(String title, String description, TaskStatus status, Long userId) {
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.userId = userId;
+    }
+
     public String getTitle() {
         return title;
     }
