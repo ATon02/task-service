@@ -25,6 +25,14 @@ public class TaskEntity {
         this.userId = userId;
     }
 
+    public TaskEntity(long id,String title, String description, String status, Long userId) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.userId = userId;
+    }
+
     public Long getId() {
         return id;
     }
