@@ -18,6 +18,14 @@ public class DTOTaskEntityResponse {
     public DTOTaskEntityResponse() {
     }
 
+    public DTOTaskEntityResponse(Long id, String title, String description, String status, Long userId) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.userId = userId;
+    }
+
     public Long getId() {
         return id;
     }
